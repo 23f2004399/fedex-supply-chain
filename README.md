@@ -25,7 +25,14 @@
   - `float64 (decimal/numeric)` columns: 15
   - `int64 (integer/numeric)` columns: 14
 
-## Notes
+## Notes for Missing Values and Outliers
+
+- **Missing Values**: Documented and addressed with imputation rules (e.g., fill with "Unknown", mode, or domain-consistent placeholder). Columns with excessive missingness may be dropped.
+- **Outliers**: Flagged variables will be treated using winsorization (1st–99th percentile) or domain-appropriate clipping to avoid distortion in statistical analysis.
+- **Invalid Dates**: None detected.
+- **Overall Rule**: Cleaning will balance data integrity with completeness, using conservative imputation and robust outlier handling.
+
+## Other Notes
 
 - Several columns appear to have overlapping or redundant information (e.g., multiple customer/order/product IDs).
 - Text and date-based fields might need preprocessing for analysis or modeling.
