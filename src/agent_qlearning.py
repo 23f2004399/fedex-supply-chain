@@ -9,26 +9,21 @@ CSV_DIR = os.path.join(os.path.dirname(__file__), "..", "csv_results")
 os.makedirs(FIG_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
 
-# --- Discretization helpers for tabular Q-learning ---
 def discretize_obs(obs, bins):
-    """Discretize continuous observation into tuple of ints."""
     return tuple(np.digitize(obs[i], bins[i]) for i in range(len(obs)))
 
 def get_bins():
-    # Define bins for each obs dim: [inventory, outstanding, leadtime, disruption, scri]
     return [
-        np.linspace(0, 100, 11),   # inventory
-        np.linspace(0, 100, 11),   # outstanding
-        np.linspace(0, 30, 6),     # leadtime
-        np.array([0, 1, 2]),       # disruption (already discrete)
-        np.linspace(0, 1, 6),      # scri
+        np.linspace(0, 100, 11),  
+        np.linspace(0, 100, 11),   
+        np.linspace(0, 30, 6),     
+        np.array([0, 1, 2]),      
+        np.linspace(0, 1, 6),     
     ]
 
 def get_action_space():
-    # order_qty: 0-20, expedite: 0/1, mitigate: 0/1
     return [(q, e, m) for q in range(0, 21, 5) for e in [0, 1] for m in [0, 1]]
 
-# --- Q-learning agent ---
 class QLearningAgent:
     def __init__(self, obs_bins, action_space, alpha=0.1, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.05):
         self.q_table = defaultdict(lambda: np.zeros(len(action_space)))
@@ -57,15 +52,13 @@ class QLearningAgent:
     def decay_epsilon(self):
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
 
-# --- KPI computation ---
 def compute_kpis(episode_log):
-    # Service level: fraction of demand fulfilled
     total_demand = sum(x['demand'] for x in episode_log)
     fulfilled = sum(x['fulfilled'] for x in episode_log)
     service_level = fulfilled / total_demand if total_demand > 0 else 1.0
-    # SCRI violations
+
     scri_viol = sum(x['scri'] > 0.7 for x in episode_log)
-    # VaR/TVaR (weekly cost, assuming 7 steps = 1 week)
+
     costs = [x['cost'] for x in episode_log]
     weekly_costs = [sum(costs[i:i+7]) for i in range(0, len(costs), 7)]
     if weekly_costs:
@@ -81,7 +74,6 @@ def compute_kpis(episode_log):
         "TVaR95": tvar95
     }
 
-# --- Baseline: myopic (order fixed qty, no expedite/mitigate) ---
 def run_baseline(env, episodes=10, order_qty=10):
     rewards, kpis = [], []
     for ep in range(episodes):
@@ -102,7 +94,6 @@ def run_baseline(env, episodes=10, order_qty=10):
         kpis.append(compute_kpis(ep_log))
     return rewards, kpis
 
-# --- Main training loop ---
 def main():
     env = SupplyChainSimEnv(seed=42, config={"max_steps": 30})
     obs_bins = get_bins()
@@ -135,7 +126,6 @@ def main():
         if (ep+1) % 20 == 0:
             print(f"Episode {ep+1}/{n_episodes} | Reward: {ep_reward:.1f} | Epsilon: {agent.epsilon:.2f}")
 
-    # --- Save reward curve ---
     reward_curve = np.array(reward_curve)
     plt.figure()
     plt.plot(reward_curve, label="Q-learning")
@@ -149,7 +139,6 @@ def main():
 
     np.savetxt(os.path.join(CSV_DIR, "qlearning_reward_curve.csv"), reward_curve, delimiter=",")
 
-    # --- Baseline ---
     print("\nRunning myopic baseline...")
     base_rewards, base_kpis = run_baseline(env, episodes=20)
     plt.figure()
@@ -163,7 +152,6 @@ def main():
     plt.savefig(os.path.join(FIG_DIR, "rl_vs_baseline_reward_curve.png"))
     plt.close()
 
-    # --- KPI report ---
     def kpi_mean_std(kpis, name):
         arr = np.array([list(k.values()) for k in kpis])
         print(f"\n{name} KPI (mean ± std):")
@@ -174,7 +162,6 @@ def main():
     kpi_mean_std(kpi_list, "Q-learning")
     kpi_mean_std(base_kpis, "Myopic baseline")
 
-    # Save KPIs to CSV
     import pandas as pd
     pd.DataFrame(kpi_list).to_csv(os.path.join(CSV_DIR, "qlearning_kpis.csv"), index=False)
     pd.DataFrame(base_kpis).to_csv(os.path.join(CSV_DIR, "baseline_kpis.csv"), index=False)
