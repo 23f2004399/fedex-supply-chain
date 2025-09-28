@@ -1,5 +1,5 @@
 # SRC Folder Summary
-This file contains summary of the `simulation_model.py`, `updated_simulation_model.py` and the key differences between both the 
+This file contains summary of the `simulation_model.py`, `updated_simulation_model.py` and the key differences between both of them 
 
 ---
 
