@@ -1,0 +1,19 @@
+{
+  "risk_config": {
+    "lambda_scri": 10.0,
+    "scri_threshold": 0.7,
+    "lambda_cvar": 0.0,
+    "cvar_alpha": 0.95,
+    "cvar_bucket_len": 7,
+    "cvar_window_buckets": 50
+  },
+  "episodes_q": 200,
+  "episodes_dqn": 500,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "max_steps": 30,
+  "device": "cpu"
+}
