@@ -1,4 +1,4 @@
-pyyaml
+﻿pyyaml
 numpy
 matplotlib
 seaborn
@@ -8,3 +8,4 @@ gym
 pytest
 simpy
 tqdm
+torch

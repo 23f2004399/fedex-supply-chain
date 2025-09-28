@@ -1,0 +1,25 @@
+{
+  "max_steps": 30,
+  "episodes": 500,
+  "gamma": 0.99,
+  "lr": 0.001,
+  "batch_size": 64,
+  "buffer_size": 50000,
+  "start_training_after": 1000,
+  "train_freq": 1,
+  "target_update_freq": 200,
+  "grad_clip_norm": 10.0,
+  "eps_start": 1.0,
+  "eps_end": 0.05,
+  "eps_decay_episodes": 400,
+  "hidden_size": 128,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "device": "cpu",
+  "csv_dir": "csv_results",
+  "config_dir": "configs",
+  "run_name": "dqn_v0"
+}
