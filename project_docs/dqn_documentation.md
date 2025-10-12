@@ -131,6 +131,97 @@ The project uses:
 
 ---
 
+## 4. Implementation in FedEx Supply Chain Project
+
+### 4.1 State Representation
+
+Each state vector encodes the real-time operational snapshot:
+
+$$
+s_t = [\text{inventory}, \text{backlog}, \text{leadtime}, \text{disruption\_flag}, \text{SCRI}]
+$$
+
+This is normalized by dividing with a fixed upper bound `[100, 100, 30, 2, 1]` to stabilize neural network training.
+
+---
+
+### 4.2 Action Representation
+
+Each action consists of three decision components:
+
+$$
+a_t = (\text{order\_qty}, \text{expedite}, \text{mitigate})
+$$
+
+where:
+- order_qty ∈ {0, 1, 2, …, 20}
+- expedite ∈ {0, 1}
+- mitigate ∈ {0, 1}
+
+Total actions = 21 × 2 × 2 = **84 discrete actions**  
+These are flattened into an integer index (0–83) and later decoded back when interacting with the environment.
+
+---
+
+### 4.3 Reward Function
+
+The reward returned by the environment is a **negative cost function**:
+
+$$
+r_t = -(\text{holding\_cost} + \text{stockout\_cost} + \text{order\_cost} + \text{disruption\_cost} + \text{SCRI\_penalty})
+$$
+
+This motivates the agent to **minimize supply-chain costs** and **maximize efficiency**.
+
+---
+
+### 4.4 Environment Dynamics
+
+The FedEx environment models stochastic disruptions using correlated heavy-tailed variables (e.g., via a Student-t copula).  
+Hence, the next state distribution \( P(s'|s,a) \) is **unknown and noisy**, mimicking real-world uncertainty in lead times, demand, and disruptions.
+
+The DQN agent interacts with this environment in episodic cycles of fixed length (e.g., 30 steps).
+
+---
+
+### 4.5 Training Pipeline
+
+1. **Initialize** replay buffer, online Q-network, and target Q-network.
+2. For each episode:
+   - Reset environment → get `state`
+   - For each step:
+     1. Choose action via ε-greedy strategy:
+        $$
+        a_t = 
+        \begin{cases}
+        \text{random action,} & \text{with prob } \varepsilon_t \\
+        \arg\max_a Q(s_t,a;\theta), & \text{otherwise}
+        \end{cases}
+        $$
+     2. Execute action, observe `(r_t, s_{t+1}, done)`
+     3. Store transition in replay buffer
+     4. Sample mini-batch and compute loss
+     5. Update network parameters via gradient descent
+     6. Every `target_update_freq` steps: synchronize target network
+3. **Decay ε** linearly from 1.0 → 0.05 over 400 episodes.
+
+---
+
+### 4.6 Hyperparameters
+
+| Parameter | Description | Value |
+|------------|-------------|--------|
+| `γ` | Discount factor | 0.99 |
+| `α` | Learning rate (Adam) | 1e-3 |
+| `ε_start → ε_end` | Exploration range | 1.0 → 0.05 |
+| `ε_decay_episodes` | Decay schedule | 400 |
+| `batch_size` | Mini-batch size | 64 |
+| `buffer_size` | Replay buffer capacity | 50,000 |
+| `target_update_freq` | Target network sync frequency | 200 steps |
+| `max_steps` | Max steps per episode | 30 |
+
+---
+
 ## 5. Mathematical Formulation in This Project
 
 Each training step performs the following:
@@ -152,5 +243,45 @@ $$
 $$
 \theta \leftarrow \theta - \alpha \nabla_\theta L
 $$
+
+---
+
+## 6. Role of DQN in FedEx Supply Chain Optimization
+
+The DQN agent learns **adaptive policies** that balance:
+- **Inventory holding cost** vs **stockout risk**
+- **Ordering cost** vs **mitigation investment**
+- **Expediting cost** vs **service-level gains**
+
+By continuously exploring and learning, the agent autonomously discovers efficient decision thresholds such as:
+- When backlog exceeds a threshold, expedite orders.
+- When disruption risk rises, activate mitigation early.
+- Maintain optimal inventory buffer levels.
+
+This enables a **data-driven operational policy** instead of a fixed rule-based system.
+
+---
+
+## 7. Why DQN Works for This Problem
+
+Traditional Q-learning fails when:
+- The state space is large or continuous.
+- Dynamics are stochastic and nonlinear.
+
+The DQN overcomes this by:
+- **Function approximation:** Generalizing from limited samples.
+- **Replay memory:** Reducing correlation in updates.
+- **Target network:** Stabilizing training dynamics.
+- **Double DQN:** Preventing Q-value overestimation.
+
+Together, these innovations let the DQN agent **simulate and learn FedEx-style supply-chain resilience** with minimal supervision.
+
+---
+
+## 8. References
+
+- Mnih, V. et al. (2015). *Human-level control through deep reinforcement learning.* **Nature.**
+- Hessel, M. et al. (2018). *Rainbow: Combining Improvements in Deep Reinforcement Learning.* **AAAI.**
+- Sutton & Barto (2018). *Reinforcement Learning: An Introduction.*
 
 ---
