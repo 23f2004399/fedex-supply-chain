@@ -75,6 +75,32 @@ Over many episodes, Q-values converge to the optimal policy.
 
 ---
 
+## 3. Relevance of Q-Learning in the FedEx Supply Chain Project
+
+### 3.1 Real-World Context
+
+In FedEx’s supply chain, several uncertain factors affect operations:
+- Customer demand varies unpredictably.
+- Disruptions can occur due to logistics issues or supply chain risks.
+- Lead times can fluctuate due to global events.
+
+Traditional rule-based policies fail to adapt optimally to such uncertainty.  
+**Q-Learning** provides a data-driven way to **learn adaptive policies** that minimize costs and maintain resilience.
+
+---
+
+### 3.2 What Q-Learning Learns Here
+
+In this project, Q-Learning learns **how to manage inventory and logistics decisions** optimally. Specifically, it learns to:
+
+- Decide **how much to order** at each step (`order_qty`).
+- Decide **whether to expedite** shipments (`expedite`).
+- Decide **whether to mitigate** disruptions (`mitigate`).
+
+The agent explores and discovers **policies that reduce total cost and risk**.
+
+---
+
 ## 4. Mathematical Foundation for This Project
 
 ### 4.1 State Representation
@@ -162,6 +188,100 @@ This allows the agent to incrementally refine its understanding of the long-term
 
 ---
 
+## 5. Implementation in Code
+
+### 5.1 Environment: `env_supplychain.py`
+
+Key classes & methods:
+
+| Component | Purpose |
+|------------|----------|
+| `SupplyChainSimEnv` | Inherits from `gym.Env`; defines state, action, reward, and transitions. |
+| `_demand_process()` | SimPy process generating stochastic demand via Student-t Copula. |
+| `_disruption_process()` | Introduces random disruptions every few steps. |
+| `step(action)` | Executes order, updates inventory, computes costs, and returns next state & reward. |
+| `render()` | Prints stepwise environment metrics. |
+
+---
+
+### 5.2 Agent: `agent_qlearning.py`
+
+Core class:
+
+```python
+class QLearningAgent:
+    def __init__(self, obs_bins, action_space, alpha=0.1, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.05):
+        ...
+```
+
+#### Key Parameters:
+- `alpha` → learning rate
+- `gamma` → discount factor
+- `epsilon` → exploration probability
+- `epsilon_decay` → gradual decrease of ε per episode
+
+#### Core Methods:
+- `select_action(obs)` → ε-greedy policy for exploration/exploitation
+- `update(obs, action_idx, reward, next_obs, done)` → Q-table update
+- `decay_epsilon()` → reduces ε after each episode
+
+---
+
+### 5.3 Discretization of Observations
+
+Since state values are continuous (inventory, SCRI, etc.), they are **binned** into discrete categories for tabular Q-learning:
+
+```python
+def discretize_obs(obs, bins):
+    return tuple(np.digitize(obs[i], bins[i]) for i in range(len(obs)))
+```
+
+This transforms each observation into a tuple key used in the Q-table.
+
+---
+
+### 5.4 Training Loop
+
+```python
+for episode in range(n_episodes):
+    obs = env.reset()
+    done = False
+    while not done:
+        action_idx = agent.select_action(obs)
+        action = action_space[action_idx]
+        next_obs, reward, done, info = env.step(action_dict)
+        agent.update(obs, action_idx, reward, next_obs, done)
+        obs = next_obs
+    agent.decay_epsilon()
+```
+
+During training:
+- The agent interacts with the simulated environment.
+- Receives feedback (reward).
+- Updates its Q-table.
+- Gradually learns optimal supply chain management policies.
+
+---
+
+## 6. Evaluation and KPIs
+
+The project compares the **Q-Learning agent** with a **myopic baseline** (fixed-order quantity policy).
+
+Metrics include:
+
+| KPI | Description |
+|------|--------------|
+| **Service Level** | Percentage of customer demand fulfilled. |
+| **Total Cost** | Sum of all operational costs. |
+| **SCRI Violations** | Number of times Supply Chain Risk Index > 0.7. |
+| **VaR95 / TVaR95** | Financial risk metrics capturing extreme cost scenarios. |
+
+Plots generated:
+- `qlearning_reward_curve.png`
+- `rl_vs_baseline_reward_curve.png`
+
+---
+
 ## 7. Mathematical Intuition — Why Q-Learning Works Here
 
 The supply chain system can be abstracted as a **sequential decision process** under uncertainty.
@@ -189,5 +309,53 @@ $$
 $$
 
 which means the agent will eventually converge to optimal decisions for ordering and risk mitigation.
+
+---
+
+## 8. Practical Insight for FedEx
+
+| Challenge | Q-Learning Contribution |
+|------------|--------------------------|
+| Uncertain demand | Learns adaptive reorder quantities |
+| Random disruptions | Learns when to mitigate proactively |
+| Cost vs. Service trade-off | Learns optimal balance minimizing total cost |
+| Risk management | Reduces SCRI violations dynamically |
+
+Over time, the trained Q-agent can serve as a **decision-support system** for operational managers.
+
+---
+
+## 9. Example Output Interpretation
+
+**Training phase logs:**
+```
+Episode 180/200 | Reward: -295.2 | Epsilon: 0.09
+```
+- Reward improves (less negative) → lower total cost.
+- Epsilon decreases → agent relies more on learned policy.
+
+**Final KPIs:**
+```
+Q-learning KPI (mean ± std):
+  service_level: 0.92 ± 0.03
+  total_cost: 145.3 ± 22.1
+  scri_viol: 2.1 ± 0.4
+  VaR95: 190.5 ± 10.3
+```
+→ Q-learning achieves better cost-efficiency and lower risk than the static baseline.
+
+---
+
+## 10. Summary
+
+| Aspect | Description |
+|--------|--------------|
+| **Algorithm** | Q-Learning (tabular, off-policy RL) |
+| **Environment** | FedEx supply chain simulator (Gym + SimPy) |
+| **State** | Inventory, lead time, disruption, SCRI |
+| **Action** | Order, expedite, mitigate |
+| **Reward** | Negative operational cost |
+| **Goal** | Learn optimal logistics and inventory strategy |
+| **Output** | Q-table representing best decisions for every situation |
 
 ---
